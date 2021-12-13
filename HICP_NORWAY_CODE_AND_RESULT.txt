@@ -1,0 +1,346 @@
+##Loading the data for HICP of basket goods (sugar, honey, jam and other confectionary)in Norway 2010-2021
+library(fpp)
+library(fpp2)
+library(TTR)
+
+HICP_Norway <- read.csv("C:/Users/Nishit/Downloads/HICP_Norway.csv")
+class(HICP_Norway)
+[1] "data.frame"
+##Converting the dataset into a time series for forecasting
+hicp_ts <- ts (HICP_Norway$HICP, frequency =12, start=c(2010,1))
+hicp_ts
+       Jan   Feb   Mar   Apr   May   Jun   Jul   Aug   Sep   Oct   Nov   Dec
+2010  96.4  99.3  98.2  98.6  96.6  97.5  98.4  99.6  97.4  96.2  96.4  93.7
+2011  92.5  95.6  95.1  92.6  92.2  92.6  93.6  91.2  93.1  91.1  93.2  90.2
+2012  92.5  94.7  93.8  92.7  91.8  93.1  92.3  90.4  91.9  90.8  92.5  89.1
+2013  91.3  93.0  91.8  94.1  93.5  92.8  94.9  94.9  94.4  94.9  93.8  91.2
+2014  94.0  94.7  94.8  92.9  95.8  93.8  97.6  96.7  96.4  96.2  98.1  93.3
+2015  96.8 100.7  99.0  98.0  99.2 101.3 103.5 102.4 102.5 100.8 101.9  93.9
+2016 101.2 105.3  95.1 103.1 102.8 103.1 105.5 105.5 103.5 103.0 103.9  96.0
+2017 100.4 102.7 101.8  98.3 102.0 102.9 105.7 101.7 100.1 100.2  99.1  95.9
+2018 105.2 106.6 102.3 103.3 105.6 106.1 108.1 105.4 105.8 103.9 106.8 102.8
+2019 104.1 107.9 106.5 103.0 102.6 101.9 105.7 101.3 100.9  99.2 101.9  96.6
+2020 103.8 107.6 105.7 106.4 105.7 105.1 108.9 106.1 107.0 105.7 106.8 100.3
+2021 101.9 102.1 100.0  99.3  98.4  97.2  98.7  97.8                        
+plot (hicp_ts, main="HICP for Basket Goods (Sugar,Honey,Jam,Confectionery) in Norway(2010-2021)")
+ 
+##Summary of the time series data :
+summary(hicp_ts)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  89.10   94.33   98.85   98.92  103.00  108.90 
+boxplot(hicp_ts,main="Box-Plot of HICP")
+ 
+##Data Prep
+##We can see from the time series graph that around the year 2013, there was a dip and post this, we can see a steady increase in the indexes and gradually settling towards the end of 2020 and 2021. This could be due to a fundamental change in the way these goods are priced and thus, for the sake of considering most relevant data for forecasting, we will include the data from 2014 onwards as that would yield a more accurate forecast.
+hicp_ts_recent <- window(hicp_ts,start=c(2014,01))
+plot(hicp_ts_recent)
+ 
+##We have now cut off the part of data that is no longer relevant to our forecast.
+summary(hicp_ts_recent)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  92.90   98.62  101.95  101.53  105.22  108.90 
+boxplot(hicp_ts_recent,main="BoxPlot of HICP (2014 onwards)")
+ 
+##Comparing the ACF of both time series :
+Acf(hicp_ts)
+ 
+Acf(hicp_ts_recent)
+ 
+##Decomposition
+##Decomposition helps us understand if the data has a significant seasonality component. If yes, we can see how the seasonality affects the data.
+decomp_hicp <- decompose(hicp_ts_recent)
+plot(decomp_hicp)
+ 
+##We can see here that the seasonality component is minuscule. The noise factor is more pronounced than the seasonality component and thus we can say that the data is not affected much by seasonality. But if we look at the data in general, we can see the index value dips a little every December. This could be attributed to the festive season and how the prices of sugar, jam, honey and other confectionery items are directly affected by it. To drive this popint home, lets take a look at the monthly indices to see how seasonality is pulling the HICP up or down.
+decomp_hicp$type
+[1] "additive"
+round(decomp_hicp$figure/10,2)
+ [1] -0.03  0.24 -0.08 -0.06  0.02  0.05  0.31  0.07  0.03 -0.08  0.05 -0.52
+##As we speculated, the seasonality is pretty much insignificant except in Dec where we can see it pulling down the HICP.
+##Lets try seasonally adjusting the data to see how different it could be from the data at hand.
+hicp_seas_adj <- seasadj(decomp_hicp)
+plot(hicp_ts_recent, main="Seasonally Adjusted HICP Data")
+lines(hicp_seas_adj,col="Red")
+ 
+##Forecasting
+##Mean Forecast
+##We start with the simplest of forecast first which is mean forecast that simply takes the average of the observations and forecasts the value
+mean_forecast <- meanf(hicp_ts_recent,5)
+plot (mean_forecast)
+ 
+mean_forecast$mean
+          Jan Feb Mar Apr May Jun Jul Aug      Sep      Oct      Nov      Dec
+2021                                      101.5337 101.5337 101.5337 101.5337
+2022 101.5337                                                                
+
+##Naive Forecast
+##Naive Forecasting principle considers the latest data points to be most relevant
+hicp_naive <- naive(hicp_ts_recent,12)
+plot(hicp_naive, main='Forecasts from Naive Method (97.8)')
+lines(hicp_naive$mean,col="yellow")
+ 
+Residual Analysis for Naive
+plot(hicp_naive$residuals,main="Residual Analysis - Naive",ylab="Residuals")
+ 
+Acf(hicp_naive$residuals,main="ACF of Naive Residuals")
+ 
+Residual Vs Actual Plot
+plot(hicp_naive$x,hicp_naive$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Actual Values",ylab="Residuals", main="Residual Vs Actual")
+ 
+Residual Vs Fitted Plot
+plot(hicp_naive$fitted,hicp_naive$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Fitted Values",ylab="Residuals",main="Residual Vs Fitted")
+ 
+Residual Histogram Plot
+We can see that the residuals show a fairly normal distribution slightly skewed to the right. So the naive method seems to be overforecasting.
+hist(hicp_naive$residuals, main="Histogram of Naive Residuals",xlab="Residuals")
+ 
+forecast(hicp_naive)
+Accuracy Measures
+a_n<-accuracy(hicp_naive)
+a_n
+                     ME     RMSE     MAE          MPE     MAPE      MASE       ACF1
+Training set 0.04175824 3.281617 2.43956 -0.009851831 2.415338 0.6313971 -0.3843648
+Seasonal Naive Forecast
+Seasonal Naive takes the effects of seasonality into account while forecasting
+snaive_forecast <- snaive(hicp_ts_recent,12)
+plot(snaive_forecast)
+lines(snaive_forecast$mean,col="pink")
+lines(snaive_forecast$fitted,col="purple")
+ 
+##We can see that seasonal naive is not that great at forecasting as the error in forecasting seems quite huge at places.
+
+##Exponential Smoothing
+##Exponential smoothing breaks down the data into its components such as seasonality, trend and noise.
+hicp_ets <- ets(hicp_ts_recent)
+summary(hicp_ets)
+ETS(A,Ad,A) 
+
+Call:
+ ets(y = hicp_ts_recent) 
+
+  Smoothing parameters:
+    alpha = 0.6337 
+    beta  = 1e-04 
+    gamma = 1e-04 
+    phi   = 0.9474 
+
+  Initial states:
+    l = 93.9623 
+    b = 0.4439 
+    s = -5.244 0.4416 -0.866 0.3362 0.8946 3.1326
+           0.4067 0.3043 -0.6567 -0.6168 2.2718 -0.4045
+
+  sigma:  1.9873
+
+     AIC     AICc      BIC 
+559.5744 568.9443 604.9666 
+
+Training set error measures:
+                      ME     RMSE      MAE        MPE     MAPE      MASE
+Training set -0.08966673 1.794307 1.375361 -0.1109913 1.363334 0.3559654
+                    ACF1
+Training set -0.03547928
+plot(hicp_ets)
+ 
+##From the summary we can see that the data shows additive errors, additive trend and additive seasonality.
+##Mean Squared Error for ets :
+hicp_ets$mse
+[1] 3.219537
+##Forecasting can be done by :
+forecast_ets <- forecast.ets(hicp_ets, h=12)
+forecast_ets
+plot(forecast_ets)
+ 
+##Residual Analysis of ETS
+##Histogram of Residuals
+hist(forecast_ets$residuals, main="Histogram of Residuals for ETS",xlab="Residuals")
+ 
+##Similar to Naive, we can see that the residuals are fairly normally ditributed. But as opposed to Naive, we are seeing the historgram skewed to the left meaning our ETS is underforecasting the HICP.
+Plot and ACF of Residuals
+plot(hicp_ets$residuals,main="Residual Analysis - ETS",ylab="Residuals")
+ 
+Acf(hicp_ets$residuals,main="ACF of ETS Residuals")
+ 
+##ACF looks better than the Naive forecast but we still see a couple of significant lags in residuals
+##Residuals Vs Actual
+plot(hicp_ets$x,hicp_ets$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Actual Values",ylab="Residuals", main="Residual Vs Actual")
+ 
+##Residuals Vs Fitted
+plot(hicp_ets$fitted,hicp_ets$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Fitted Values",ylab="Residuals", main="Residual Vs Fitted")
+ 
+##Accuracy Measures
+##Here are the various accuracy measures for the ETS model :
+a_ets<-accuracy(hicp_ets)
+a_ets
+                      ME     RMSE      MAE        MPE     MAPE      MASE
+Training set -0.08966673 1.794307 1.375361 -0.1109913 1.363334 0.3559654
+                    ACF1
+Training set -0.03547928
+##Holt-Winters Forecast
+##Holt Winters forecast employs various smoothing constants for level, trend and seasonality components and generates a final forecast equation.
+hicp_hw <- HoltWinters(hicp_ts_recent)
+hicp_hw
+Holt-Winters exponential smoothing with trend and additive seasonal component.
+
+##Call:
+HoltWinters(x = hicp_ts_recent)
+
+Smoothing parameters:
+ alpha: 0.6082252
+ beta : 0.04712925
+ gamma: 0.2289245
+
+Coefficients:
+            [,1]
+a   96.972128412
+b   -0.263885706
+s1  -0.004041357
+s2  -0.892865925
+s3   0.695216699
+s4  -4.660934546
+s5  -0.570596751
+s6   2.153203896
+s7  -0.454343011
+s8  -1.147626398
+s9  -0.638168293
+s10  0.349795445
+s11  2.488377664
+s12  0.499494634
+plot(hicp_hw)
+ 
+##Forecasting using Holt-Winters :
+forecast_hw <- forecast(hicp_hw,h=12)
+plot(forecast_hw)
+ 
+##Residual Analysis for Holt-Winters
+##Residual Plot 
+plot(forecast_hw$residuals,main="Residual Plot for Holt-Winters",ylab="Residuals")
+ 
+##ACF of Residuals 
+Acf(forecast_hw$residuals, main="ACF of Residuals for Holt-Winters")
+ 
+##The ACF looks much better than previous Naive or ETS. We can see there are no significant lags in the ACF anymore and thus we can be sure that the errors are not correlated.
+Histogram of Residuals:
+hist(forecast_hw$residuals, main="Histogram of Holt-winters Residuals",xlab="Residuals")
+ 
+##Errors are fairly normally distributed around 0.
+##Residuals Vs Fitted
+plot(forecast_hw$fitted,forecast_hw$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Fitted Values",ylab="Residuals", main="Residual Vs Fitted")
+ 
+##Residuals Vs Actual
+plot(forecast_hw$x,forecast_hw$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Actual Values",ylab="Residuals", main="Residual Vs Actual")
+ 
+##Accuracy Measures
+a_hw<-accuracy(forecast_hw)
+a_hw
+                     ME     RMSE      MAE        MPE     MAPE      MASE       ACF1
+Training set -0.3041817 2.109948 1.591239 -0.3230801 1.566045 0.4118379 -0.0501414
+
+##Simple Moving Averages
+##Simple moving average is a simple analysis tool that smooths out the data by creating a constantly updated average price.The smoothing depends on the order of the averages being taken.
+For order=3,6 and 9
+MA3_hicp <- ma(hicp_ts_recent,order=3)
+MA6_hicp <- ma(hicp_ts_recent,order=6)
+MA9_hicp <- ma(hicp_ts_recent,order=9)
+
+plot(hicp_ts_recent,ylab="HICP Norway",main="Time Series Plot for HICP - Norway",col="Grey",lwd=1.5)
+lines(MA3_hicp, col = "Dark Red",lwd=1.5)
+lines(MA6_hicp, col = "Orange",lwd=1.5)
+lines(MA9_hicp, col = "Purple",lwd=1.5)
+ 
+##Forecast Using MA
+forecast_ma3 <- forecast(MA3_hicp,12)
+forecast_ma6 <- forecast(MA6_hicp,12)
+forecast_ma9 <- forecast(MA9_hicp,12)
+plot(forecast_ma3)
+ 
+plot(forecast_ma6)
+ 
+plot(forecast_ma9)
+ 
+##Residual Analysis for Simple Moving Averages
+##We consider the the model with an order of 6 for our forecast as it is a forecast for the next year.
+ACF and Histogram of Residuals :
+plot(forecast_ma7$residuals,main="Residual Plot for Simple MA",ylab="Residuals")
+ 
+hist(forecast_ma7$residuals,main="Histogram of Residuals for Simple MA (order=7)",xlab="Residuals")
+ 
+##We can see that the residuals are random in nature and are normally distributed around 0 while being slightly skewed to left indicating there may be overforecasting.
+##Residual Vs Actual
+plot(forecast_ma6$x,forecast_ma6$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Actual Values",ylab="Residuals", main="Residual Vs Actual")
+ 
+Residual Vs Fitted
+plot(forecast_ma6$fitted,forecast_ma6$residuals,xy.labels=FALSE,xy.lines = FALSE,xlab="Fitted Values",ylab="Residuals", main="Residual Vs Fitted")
+ 
+Accuracy Measures for Moving Averages
+Since we are forecasting HICP for the next 12 months (long range), we can use the order 6 moving average forecast to check the predicted values
+a_ma <- accuracy(forecast_ma6)
+a_ma
+                      ME      RMSE       MAE         MPE      MAPE     MASE
+Training set -0.07539808 0.4729279 0.3728572 -0.07360156 0.3650826 0.132861
+                  ACF1
+Training set 0.5871491
+
+##ARIMA
+Typically used for short range predictions due to its flexibility, we shall now try to do a forecast using ARIMA
+adf.test(hicp_ts_recent)
+
+##Augmented Dickey-Fuller Test
+
+data:  hicp_ts_recent
+Dickey-Fuller = -2.2796, Lag order = 4, p-value = 0.461
+alternative hypothesis: stationary
+kpss.test(hicp_ts_recent)
+
+##KPSS Test for Level Stationarity
+
+data:  hicp_ts_recent
+KPSS Level = 0.98394, Truncation lag parameter = 3, p-value = 0.01
+ndiffs(hicp_ts_recent)
+[1] 1
+tsdisplay(hicp_ts_recent, main="HICP Time Series/ACF/PACF")
+ 
+##Lets see how it looks after first round of differences
+hicp_ts_diff1 <- diff(hicp_ts_recent, differences=1)
+tsdisplay(hicp_ts_diff1)
+ 
+ndiffs(hicp_ts_diff1)
+[1] 0
+##We now know that the d part in ARIMA(p,d,q) is 1.
+##Fitting the best ARIMA model
+auto_fit <- auto.arima(hicp_ts_recent)
+auto_fit
+Series: hicp_ts_recent 
+ARIMA(0,1,1)(2,0,0)[12] 
+
+Coefficients:
+          ma1    sar1    sar2
+      -0.4680  0.2310  0.5053
+s.e.   0.0861  0.0841  0.0938
+
+sigma^2 estimated as 4.759:  log likelihood=-203.71
+AIC=415.42   AICc=415.89   BIC=425.47
+Forecasting Using ARIMA
+arima_hicp <- forecast(auto_fit,h=5)
+plot(arima_hicp)
+ 
+##Residual Analysis of ARIMA
+Acf(auto_fit$residuals,main="ACF of Residuals")
+ 
+plot.ts(residuals(auto_fit),ylab="Residuals",main="Residula Plot for ARIMA")
+ 
+hist(auto_fit$residuals, main="Histogram of Residuals (ARIMA)",xlab="Residuals")
+ 
+##We can make below observations from residual analysis : - There is no significant correlation between the residuals - The residuals are random in nature and do not show any recognizable pattern - The residuals are normally ditributed around 0 while being slightly skewed towards right indicating we may be underforecasting the values.
+Accuracy Measures
+a_arma <- accuracy(arima_hicp)
+a_arma
+                     ME     RMSE      MAE        MPE     MAPE      MASE        ACF1
+Training set -0.1087859 2.133462 1.615173 -0.1367518 1.599689 0.4180325 -0.06022904
+
+##Conclusion
+
+##In conclusion, we can see that Moving Averages give the best RMSE measures. But at the same time the ACF of residuals for Moving Averages was not satisfactory. But looking at Holt-Winters and ARIMA, we can see that RMSE measures as well as ACF of residuals are both satisfactory.
+##So we should go with one of these models or a combination of both for this particular prediction.
+
+##Going back to the FRED website we could see that HICP for September and October has been updated : 97.6 for September and 96.2 for October. If we look at ARIMA model, we can see that it has made a pretty spot on prediction for Sept 2021 and Oct 2021. This means the ARIMA model is very much reliable. 
