@@ -12,11 +12,11 @@ William Cardona https://github.com/Wcard625
 - Models
 The project compared various models and below are some of the important ones :
 
-Naive
-ETS
-Moving Averages
-Holt-Winters
-ARIMA
+ Naive,
+ ETS,
+ Moving Averages,
+ Holt-Winters,
+ ARIMA
 - Conclusion
 At the end of the project, we gained enough insights to conclude that Holt-Winters/ARIMA are the best models for this particular prediction as they gave a decent RMSE value (if not the best) and also gave satisfactory residual analysis. The FRED website now has the most recent HICP values for September, October and November 2021 that were not there previously. If we compare these values to the forecast outputs of ARIMA and Holt-Winters, we can see the predictions are pretty spot on.
 
